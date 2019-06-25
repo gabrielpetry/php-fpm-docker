@@ -1,6 +1,5 @@
 #!/bin/bash
 
-$(command -v chmod) 700 /etc/monit/monitrc
 
 #CLEAR TMP FILES
 /root/autoclean.sh
@@ -58,7 +57,6 @@ done
 cp -f /etc/ssmtp/ssmtp.conf.template /etc/ssmtp/ssmtp.conf
 sed -i "s/%MY_HOSTNAME%/$SMTP_HOST/g" /etc/ssmtp/ssmtp.conf
 
-$(command -v sed) -i 's/%PHP_VERSION%/'$PHPVERSION'/g' /etc/monit/conf-enabled/php-fpm
 $(command -v sed) -i 's/%PHP_VERSION%/'$PHPVERSION'/g' /etc/php/$PHPVERSION/fpm/pool.d/www.conf
 $(command -v sed) -i 's/%PHP_VERSION%/'$PHPVERSION'/g' /etc/php/$PHPVERSION/fpm/php-fpm.conf
 
@@ -67,8 +65,5 @@ $(command -v sed) -i 's/%PHP_VERSION%/'$PHPVERSION'/g' /etc/php/$PHPVERSION/fpm/
 /usr/sbin/service cron restart
 /usr/sbin/service php$PHPVERSION-fpm restart
 sleep 1
-/usr/sbin/service monit start
-
 #KEEP CONTAINER ALIVE
-# /usr/bin/tail -f /var/log/php$PHPVERSION-fpm.log
-bash
+/usr/bin/tail -f /var/log/php$PHPVERSION-fpm.log
