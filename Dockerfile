@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM ubuntu:latest
 
 ARG PHP_VERSION=7.3
 
