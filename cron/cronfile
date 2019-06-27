@@ -1,0 +1,2 @@
+#System crons
+0 2 * * *  $(command -v apt-get) update; /usr/bin/unattended-upgrades; $(which apt-get) -fy install; $(which apt-get) -y autoremove; $(which apt-get) clean

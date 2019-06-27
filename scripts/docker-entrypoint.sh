@@ -1,69 +1,53 @@
 #!/bin/bash
+# helpers functions
+changeTemplateToConst() {
+    if $(command -v sed) -i "s/${1}/${2}/g" "${3}"; then
+        return 0
+    fi
+    # Error occurred
+    return 1
+}
 
-
-#CLEAR TMP FILES
+# CLEAR TMP FILES
 /root/autoclean.sh
 
-#ADD CRON
-CRONFILE="/cronfile.final"
-SYSTEMCRON="/cronfile.system"
-USERCRON="/cronfile"
+# ADD CRON
+CRONFILE="/cronfile"
+/usr/bin/crontab "${CRONFILE}"
 
-echo > $CRONFILE
-if [ -f "$SYSTEMCRON" ]; then
-	cat $SYSTEMCRON >> $CRONFILE
+# DECLARE/SET VARIABLES
+PHP_VERSION=$(cat /PHP_VERSION 2>/dev/null)
+if [[ -z "${PHP_VERSION}" ]]; then
+    echo "Something wen't wrong"
+    return 2
 fi
-if [ -f "$USERCRON" ]; then
-	cat $USERCRON >> $CRONFILE
+if [[ -z "${PHP_MEMORY_LIMIT}" ]]; then
+    PHP_MEMORY_LIMIT="128M"
 fi
-/usr/bin/crontab $CRONFILE
-
-#DECLARE/SET VARIABLES
-PHPVERSION=$(cat /PHP_VERSION 2>/dev/null)
-if [ -z "$PHPVERSION" ]; then
-    PHPVERSION=$(php -v|grep --only-matching --perl-regexp "7\.\\d+" |head -n1)
+if [[ -z "${PHP_DISPLAY_ERRORS}" ]]; then
+    PHP_DISPLAY_ERRORS="Off"
 fi
-
-if [ -z "$PHPVERSION" ]; then
-    PHPVERSION='7.3'
+if [[ -z "${SMTP_SERVER}" ]]; then
+    SMTP_SERVER="mail"
 fi
-
-if [ -z "$SMTP_HOST" ]; then
-    SMTP_HOST="$(/bin/hostname)"
+if [[ -z "${SMTP_HOSTNAME}" ]]; then
+    SMTP_HOSTNAME="$(/bin/hostname)"
 fi
 
-#SORRY FOR THAT =(
-if [ -f "/etc/php/fpm/php-fpm.conf" ]; then
-    $(command -v cp) -f /etc/php/fpm/php-fpm.conf /etc/php/$PHPVERSION/fpm/php-fpm.conf
-fi
+# PUPULATE TEMPLATES
+changeTemplateToConst "%SMTP_SERVER%" "${SMTP_SERVER}" "/etc/ssmtp/ssmtp.conf"
+changeTemplateToConst "%SMTP_HOSTNAME%" "${SMTP_HOSTNAME}" "/etc/ssmtp/ssmtp.conf"
+changeTemplateToConst "%SMTP_USER%" "${SMTP_USER}" "/etc/ssmtp/ssmtp.conf"
+changeTemplateToConst "%SMTP_PASS%" "${SMTP_PASS}" "/etc/ssmtp/ssmtp.conf"
 
-if [ -f "/etc/php/fpm/php.ini" ]; then
-    $(command -v cp) -f /etc/php/fpm/php.ini /etc/php/$PHPVERSION/fpm/php.ini
-fi
+changeTemplateToConst "%PHP_VERSION%" "${PHP_VERSION}" "/etc/php/${PHP_VERSION}/fpm/php-fpm.conf"
+changeTemplateToConst "%PHP_VERSION%" "${PHP_VERSION}" "/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf"
+changeTemplateToConst "%PHP_DISPLAY_ERRORS%" "${PHP_DISPLAY_ERRORS}" "/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf"
+changeTemplateToConst "%PHP_MEMORY_LIMIT%"   "${PHP_MEMORY_LIMIT}"   "/etc/php/${PHP_VERSION}/fpm/pool.d/www.conf"
 
-if [ -f "/etc/php/fpm/pool.d/www.conf" ]; then
-    $(command -v cp) -f /etc/php/fpm/pool.d/www.conf /etc/php/$PHPVERSION/fpm/pool.d/www.conf
-fi
-
-#POPULATE ENV
-echo > /etc/php/$PHPVERSION/fpm/env.conf
-for i in $(/usr/bin/env); do
-    PARAM="$(echo "$i" |cut -d"=" -f1)"
-    VAL="$(echo "$i" |cut -d"=" -f2)"
-    echo "env[$PARAM]=\"$VAL\"" >> /etc/php/$PHPVERSION/fpm/env.conf
-done
-
-#PUPULATE TEMPLATES
-cp -f /etc/ssmtp/ssmtp.conf.template /etc/ssmtp/ssmtp.conf
-sed -i "s/%MY_HOSTNAME%/$SMTP_HOST/g" /etc/ssmtp/ssmtp.conf
-
-$(command -v sed) -i 's/%PHP_VERSION%/'$PHPVERSION'/g' /etc/php/$PHPVERSION/fpm/pool.d/www.conf
-$(command -v sed) -i 's/%PHP_VERSION%/'$PHPVERSION'/g' /etc/php/$PHPVERSION/fpm/php-fpm.conf
-
-
-#START SERVICES
+# START SERVICES
 /usr/sbin/service cron restart
-/usr/sbin/service php$PHPVERSION-fpm restart
-sleep 1
-#KEEP CONTAINER ALIVE
-/usr/bin/tail -f /var/log/php$PHPVERSION-fpm.log
+/usr/sbin/service "php${PHP_VERSION}-fpm" restart
+
+# KEEP CONTAINER ALIVE
+/usr/bin/tail -f "/var/log/php${PHP_VERSION}-fpm.log"
