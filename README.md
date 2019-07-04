@@ -32,21 +32,35 @@ systemctl restart postfix
 
 ## Using this image
 Best using docker-compose to start this image.
-```
-version: '2'
+```docker-compose
+version: '3'
 services:
- php-fpm:
-  image: fbraz3/php-fpm:7.3
-  volumes:
-   - /my/app/root/:/app   
-  ports:
-    - "127.0.0.1:1780:1780"
-  extra_hosts:  
-      - "mail:192.168.0.1"
-  restart: always
-networks:
- dockernet:
-   external: true
+    web:
+        image: gabrielpetry/nginx
+        restart: always
+        env_file:
+            - .env
+        volumes:
+            - ./Laravel:/var/www/html
+        ports:
+            - 80:80
+        links:
+            - php
+        depends_on:
+            - php
+    php:
+        image: gabrielpetry/php-fpm
+        restart: always
+        volumes:
+            - ./Laravel:/app
+        env_file:
+            - .env
+```
+
+Create a .env file
+```env
+PHP_DISPLAY_ERRORS=On
+NGINX_ROOT=\/public
 ```
 
 **Note**: Dont forget to replace `/my/app/root/` to your real app root! 
