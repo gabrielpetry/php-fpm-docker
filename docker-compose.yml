@@ -1,7 +1,7 @@
 version: '3'
 services:
  php-fpm:
-  image: gpetry/php-fpm
+  image: gabrielpetry/php-fpm
   restart: always
   volumes:
    - ./App/:/app
